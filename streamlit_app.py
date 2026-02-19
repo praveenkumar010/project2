@@ -1,27 +1,51 @@
 import streamlit as st
 import tempfile
+import os
 from speed_pipeline import process_video
 
-st.set_page_config(page_title="Speed Detection AI", layout="wide")
+st.set_page_config(page_title="Vehicle Speed Detection", layout="wide")
 
-st.title("🚗 AI Speed Violation Detection")
+st.title("🚗 Vehicle Speed Detection System")
+st.write("Upload a traffic video to detect vehicle speed and violations.")
 
-uploaded_file = st.file_uploader("Upload Traffic Video", type=["mp4","mov","avi"])
+uploaded_video = st.file_uploader("Upload Traffic Video", type=["mp4","avi","mov"])
 
-if uploaded_file:
+if uploaded_video is not None:
 
-    st.info("Processing video... please wait ⏳")
+    st.success("Video uploaded successfully!")
 
-    # Save uploaded file temporarily
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(uploaded_file.read())
+    # Save uploaded video temporarily
+    temp_input = tempfile.NamedTemporaryFile(delete=False)
+    temp_input.write(uploaded_video.read())
+    input_path = temp_input.name
 
-    # Run detection
-    output_video = process_video(tfile.name)
+    st.info("⏳ Processing video... please wait")
+
+    # Run detection pipeline
+    output_video, df = process_video(input_path)
 
     st.success("Processing Completed!")
 
-    st.video(output_video)
+    # SHOW VIDEO
+    st.subheader("🎥 Processed Video")
+    video_file = open(output_video, 'rb')
+    video_bytes = video_file.read()
+    st.video(video_bytes)
 
-    with open(output_video, "rb") as f:
-        st.download_button("⬇ Download Result", f, file_name="speed_output.mp4")
+    # DOWNLOAD BUTTON
+    st.download_button(
+        label="⬇ Download Processed Video",
+        data=video_bytes,
+        file_name="processed_video.mp4",
+        mime="video/mp4"
+    )
+
+    # SHOW TABLE
+    st.subheader("🚨 Violations Detected")
+
+    if len(df) > 0:
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.success("No violations detected 🎉")
+
+    os.remove(input_path)
